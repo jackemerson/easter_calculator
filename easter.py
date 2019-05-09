@@ -1,11 +1,12 @@
 from datetime import (datetime, timezone, timedelta)
 from math import ceil, floor
-from skyfield import api,almanac,timelib
+from skyfield import almanac,timelib,api
 
 # ts = None
 # e = None
-ts = api.load.timescale() #timescale
-e = api.load('de436.bsp')
+sky_load = api.Loader('./sky_data')
+ts = sky_load.timescale() #timescale
+e = sky_load('de436.bsp')
 
 # write code to automatically propagate these dates
 init_year = 1550
