@@ -6,7 +6,7 @@ from skyfield import almanac,timelib,api
 # e = None
 sky_load = api.Loader('./sky_data')
 ts = sky_load.timescale() #timescale
-e = sky_load('de436.bsp')
+e = sky_load('de438.bsp')
 
 # write code to automatically propagate these dates
 init_year = 1550
