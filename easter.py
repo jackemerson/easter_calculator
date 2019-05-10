@@ -29,7 +29,7 @@ def set_data_range(dataset):
 
 def main():
     print("We're live.")
-    set_data_range(dataset)
+    set_data_range(e)
     print(f"Start Year: {init_year}, End Year: {last_year}")
     
 if __name__ == '__main__':
