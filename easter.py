@@ -9,8 +9,10 @@ ts = sky_load.timescale() #timescale
 e = sky_load('de438.bsp')
 
 # write code to automatically propagate these dates
-init_year = 1550
-last_year = 2650
+init_year = None
+last_year = None
+start_second = None
+end_second = None
 
 equinox_day = 21
 equinox_month = 3
@@ -21,32 +23,22 @@ equinox_month = 3
 
 
 #pulled from spk, start and end dates of data date range
-def set_data_range():
-    global init_year, last_year
-    init_year = ts.tt(jd=e.spk.segments[0].start_jd).utc_datetime().year + 1
-    last_year = ts.tt(jd=e.spk.segments[0].end_jd).utc_datetime().year - 1
+def set_data_range(dataset):
+    global init_year, last_year, start_second, end_second
+    init_year, last_year, start_second, end_second = get_data_range(dataset)
 
 def main():
     print("We're live.")
-    set_data_range()
+    set_data_range(dataset)
     print(f"Start Year: {init_year}, End Year: {last_year}")
     
 if __name__ == '__main__':
     main()
 
-#holistic approach, functions from 1550 up to 2650 - JD 2287184.5 through 2688976.5
-def easter_sunday(year):
-    full_moon = next_full_moon(march_equinox(year)+timedelta(1)) #next full moon following equinox
-    for i in range(7): #find next sunday
-        day = (full_moon + timedelta(i))
-        if day.weekday() == 6: #6 == sunday
-            return datetime(day.year,day.month,day.day, tzinfo = timezone.utc)
-
 def march_equinox(year):
     #must be 15 day range minimum, apparently?
     t0 = ts.utc(year, 3, 13)
     t1 = ts.utc(year, 3, 28)
-    
     tstamp, phase = almanac.find_discrete(t0, t1, almanac.seasons(e))
     for phi, ti in zip(phase, tstamp):
         if phi == 0:
@@ -54,6 +46,7 @@ def march_equinox(year):
     else:
         raise ExceptionalError("Is this Earth?")
 
+#next full moon from given data
 def next_full_moon(given_date):
     start = ts.utc(given_date)
     finish = ts.utc(given_date + timedelta(30))
@@ -64,9 +57,17 @@ def next_full_moon(given_date):
     else:
         raise ExceptionalError("That's no moon.") #there should always be a full moon over the span of 30 days
 
+#holistic approach, functions from 1550 up to 2650 - JD 2287184.5 through 2688976.5
+def astronomical_easter(year):
+    full_moon = next_full_moon(march_equinox(year)+timedelta(1)) #next full moon following equinox
+    for i in range(7): #find next sunday
+        day = (full_moon + timedelta(i))
+        if day.weekday() == 6: #6 == sunday
+            return datetime(day.year,day.month,day.day, tzinfo = timezone.utc)
+
 #https://en.wikipedia.org/wiki/Computus#Software
 #Ian Taylor
-def calc_easter(year):
+def gauss_easter(year):
     '''
     Gauss algorithm to calculate the date of easter in a given year
     returns a date object
@@ -84,6 +85,7 @@ def calc_easter(year):
     return datetime(year, month, day,tzinfo=timezone.utc)
 
 #later = 1, earlier = -1, during = 0
+#Check data range, see if it falls outside
 def outside_data_range(year):
     if(year > last_year):
         return 1
@@ -92,6 +94,7 @@ def outside_data_range(year):
     else:
         return 0
 
+#returns True if data is inside, else raises (not super helpful) exception
 def in_data_range(year): #I don't know what I'm doing
     odr = outside_data_range(year)
     if not odr: #if it is outside the data range
@@ -111,6 +114,7 @@ def compare_easters(first_year = init_year, final_year = last_year, print_result
         astronomy, the_church, diff_days = compare_easter(i)
         easter_dates[i] = {'Church': the_church, 'Astronomy': astronomy}
         if diff_days != 0:
+            #if you want to print a fun little comparison to console
             if print_results:
                 ast_date = astronomy.strftime('%d/%m')
                 ch_date = the_church.strftime('%d/%m')
@@ -124,8 +128,8 @@ def compare_easters(first_year = init_year, final_year = last_year, print_result
 
 #compare a specific year
 def compare_easter(year, print_results = False):
-    astronomy = easter_sunday(year)
-    the_church = calc_easter(year)
+    astronomy = astronomical_easter(year)
+    the_church = gauss_easter(year)
     diff = astronomy - the_church
     if(print_results):
         ast_date = astronomy.strftime('%d/%m/%y')
@@ -133,6 +137,24 @@ def compare_easter(year, print_results = False):
         print(f"Science vs Church : {ast_date} | {ch_date}")
     else:
         return astronomy, the_church, diff.days
+
+#helper functions
+
+#returns data range as two datetime objects (start and end), utc timezone
+#also returns exact j2000 seconds
+def get_data_range(dataset):
+    first_second = dataset.spk.segments[0].start_second
+    last_second = dataset.spk.segments[0].end_second
+    start = ts.tt(jd=dataset.spk.segments[0].start_jd).utc_datetime()
+    end = ts.tt(jd=dataset.spk.segments[0].end_jd).utc_datetime()
+    return start, end, first_second, last_second
+
+#check if data range is set: if not, sets it
+def dr_check(dataset):
+    if not (init_year or last_year):
+        set_data_range(dataset)
+        return False
+    return True
 
 
 def jd_convert(seconds):
