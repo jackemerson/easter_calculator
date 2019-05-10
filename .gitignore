@@ -1,8 +1,14 @@
 # assets #
 *.bsp
 easter/
-.vscode/
 sky_data/
+
+#env
+.env/
+
+#workspace settings
+.vscode/
+.vs/
 
 # OS files #
 ############
